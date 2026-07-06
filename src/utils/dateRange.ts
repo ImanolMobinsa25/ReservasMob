@@ -45,6 +45,10 @@ export const TIME_SLOTS: string[] = (() => {
   return slots;
 })();
 
+export function isPast(iso: string): boolean {
+  return new Date(iso).getTime() < Date.now();
+}
+
 export function isSameDay(a: Date, b: Date): boolean {
   return (
     a.getFullYear() === b.getFullYear() &&

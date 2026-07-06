@@ -3,13 +3,24 @@ import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { DayPicker } from "react-day-picker";
 import { es } from "react-day-picker/locale";
+import {
+  Ban,
+  Building2,
+  CalendarDays,
+  Clock,
+  MessageSquare,
+  User,
+  Users as UsersIcon,
+} from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useRooms } from "../hooks/useRooms";
 import { useRoomAvailability } from "../hooks/useRoomAvailability";
 import { pb } from "../lib/pocketbase";
-import { Checkbox, Input, Select, TextArea } from "../components/ui/Field";
+import { Input, Select, TextArea } from "../components/ui/Field";
 import { Button } from "../components/ui/Button";
 import { Alert } from "../components/ui/Alert";
+import { ExtraOptionCard } from "../components/bookings/ExtraOptionCard";
+import { EXTRA_ICONS } from "../components/bookings/extraIcons";
 import { combineDateAndTime, isSameDay, TIME_SLOTS } from "../utils/dateRange";
 
 export function NewBookingPage() {
@@ -23,7 +34,7 @@ export function NewBookingPage() {
   const [endTime, setEndTime] = useState("09:30");
   const [peopleCount, setPeopleCount] = useState(1);
   const [reason, setReason] = useState("");
-  const [requesterEmail, setRequesterEmail] = useState(user?.email ?? "");
+  const [requesterName, setRequesterName] = useState(user?.name ?? "");
   const [wantsCoffee, setWantsCoffee] = useState(false);
   const [wantsCookies, setWantsCookies] = useState(false);
   const [wantsWater, setWantsWater] = useState(false);
@@ -80,6 +91,7 @@ export function NewBookingPage() {
 
     if (!roomId) return setError("Selecciona una sala.");
     if (!day) return setError("Selecciona un día.");
+    if (!requesterName.trim()) return setError("Indica el nombre de quién solicita la sala.");
 
     const start = combineDateAndTime(day, startTime);
     const end = combineDateAndTime(day, endTime);
@@ -107,7 +119,7 @@ export function NewBookingPage() {
         start: start.toISOString(),
         end: end.toISOString(),
         people_count: peopleCount,
-        requester_email: requesterEmail,
+        requester_name: requesterName.trim(),
         wants_coffee: wantsCoffee,
         wants_cookies: wantsCookies,
         wants_water: wantsWater,
@@ -124,18 +136,26 @@ export function NewBookingPage() {
 
   return (
     <div>
-      <h1 className="mb-1 text-xl font-semibold text-neutral-900 dark:text-neutral-100">
-        Nueva solicitud de sala
-      </h1>
-      <p className="mb-6 text-sm text-neutral-500 dark:text-neutral-400">
-        Elige la sala, el día y el horario que necesitas. Una sala solo puede tener una reserva
-        aprobada por día.
-      </p>
+      <div className="mb-6 flex items-center gap-3">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-royal-600 text-white shadow-sm shadow-royal-900/20">
+          <CalendarDays size={20} />
+        </span>
+        <div>
+          <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+            Nueva solicitud de sala
+          </h1>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            Elige la sala, el día y el horario. Una sala solo puede tener una reserva aprobada por
+            día.
+          </p>
+        </div>
+      </div>
 
       <form onSubmit={handleSubmit} className="grid gap-6 md:grid-cols-2">
-        <div className="space-y-4">
+        <div className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-5 shadow-soft dark:border-neutral-800 dark:bg-neutral-900">
           <Select
             label="Sala"
+            icon={<Building2 size={16} />}
             value={roomId}
             onChange={(e) => setRoomId(e.target.value)}
             required
@@ -150,14 +170,24 @@ export function NewBookingPage() {
           </Select>
 
           <div className="grid grid-cols-2 gap-3">
-            <Select label="Hora inicio" value={startTime} onChange={(e) => setStartTime(e.target.value)}>
+            <Select
+              label="Hora inicio"
+              icon={<Clock size={16} />}
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+            >
               {TIME_SLOTS.map((t) => (
                 <option key={t} value={t}>
                   {t}
                 </option>
               ))}
             </Select>
-            <Select label="Hora fin" value={endTime} onChange={(e) => setEndTime(e.target.value)}>
+            <Select
+              label="Hora fin"
+              icon={<Clock size={16} />}
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+            >
               {TIME_SLOTS.map((t) => (
                 <option key={t} value={t}>
                   {t}
@@ -168,6 +198,7 @@ export function NewBookingPage() {
 
           <Input
             label="Número de personas"
+            icon={<UsersIcon size={16} />}
             type="number"
             min={1}
             value={peopleCount}
@@ -184,45 +215,55 @@ export function NewBookingPage() {
           />
 
           <div>
-            <span className="mb-1.5 block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+            <span className="mb-2 block text-sm font-medium text-neutral-700 dark:text-neutral-300">
               ¿Necesitas algo para la reunión?
             </span>
-            <div className="grid grid-cols-2 gap-2 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
-              <Checkbox
+            <div className="grid grid-cols-4 gap-2">
+              <ExtraOptionCard
+                icon={<EXTRA_ICONS.wants_coffee size={18} />}
                 label="Café"
                 checked={wantsCoffee}
-                onChange={(e) => toggleExtra(setWantsCoffee, e.target.checked)}
+                onChange={(v) => toggleExtra(setWantsCoffee, v)}
               />
-              <Checkbox
+              <ExtraOptionCard
+                icon={<EXTRA_ICONS.wants_cookies size={18} />}
                 label="Galletas"
                 checked={wantsCookies}
-                onChange={(e) => toggleExtra(setWantsCookies, e.target.checked)}
+                onChange={(v) => toggleExtra(setWantsCookies, v)}
               />
-              <Checkbox
+              <ExtraOptionCard
+                icon={<EXTRA_ICONS.wants_water size={18} />}
                 label="Agua"
                 checked={wantsWater}
-                onChange={(e) => toggleExtra(setWantsWater, e.target.checked)}
+                onChange={(v) => toggleExtra(setWantsWater, v)}
               />
-              <Checkbox
+              <ExtraOptionCard
+                icon={<EXTRA_ICONS.wants_snack size={18} />}
                 label="Snack"
                 checked={wantsSnack}
-                onChange={(e) => toggleExtra(setWantsSnack, e.target.checked)}
+                onChange={(v) => toggleExtra(setWantsSnack, v)}
               />
-              <div className="col-span-2 mt-1 border-t border-neutral-100 pt-2 dark:border-neutral-800">
-                <Checkbox
-                  label="No necesito nada de esto"
-                  checked={noExtras}
-                  onChange={(e) => toggleNoExtras(e.target.checked)}
-                />
-              </div>
             </div>
+            <button
+              type="button"
+              onClick={() => toggleNoExtras(!noExtras)}
+              aria-pressed={noExtras}
+              className={`mt-2 flex w-full items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
+                noExtras
+                  ? "border-neutral-400 bg-neutral-100 text-neutral-800 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100"
+                  : "border-dashed border-neutral-300 text-neutral-500 hover:border-neutral-400 hover:text-neutral-700 dark:border-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
+              }`}
+            >
+              <Ban size={16} /> No necesito nada de esto
+            </button>
           </div>
 
           <Input
-            label="Correo para confirmación"
-            type="email"
-            value={requesterEmail}
-            onChange={(e) => setRequesterEmail(e.target.value)}
+            label="Nombre"
+            icon={<User size={16} />}
+            value={requesterName}
+            onChange={(e) => setRequesterName(e.target.value)}
+            placeholder="¿A nombre de quién es la solicitud?"
             required
           />
 
@@ -236,13 +277,19 @@ export function NewBookingPage() {
 
           <Alert variant="error" message={error} />
 
-          <Button type="submit" disabled={loading || dayAlreadyApproved} className="w-full md:w-auto">
+          <Button
+            type="submit"
+            loading={loading}
+            disabled={dayAlreadyApproved}
+            className="w-full md:w-auto"
+          >
             {loading ? "Enviando..." : "Enviar solicitud"}
           </Button>
         </div>
 
-        <div className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
-          <p className="mb-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">
+        <div className="h-fit rounded-2xl border border-neutral-200 bg-white p-5 shadow-soft dark:border-neutral-800 dark:bg-neutral-900">
+          <p className="mb-3 flex items-center gap-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">
+            <MessageSquare size={16} className="text-royal-600 dark:text-royal-400" />
             Elige el día
           </p>
           <DayPicker

@@ -23,6 +23,7 @@ export interface Booking extends RecordModel {
   end: string;
   people_count: number;
   requester_email: string;
+  requester_name: string;
   requested_by: string;
   status: BookingStatus;
   rejection_reason?: string;

@@ -92,7 +92,7 @@ export function NotificationBell() {
             width: PANEL_WIDTH,
             maxWidth: `calc(100vw - ${VIEWPORT_MARGIN * 2}px)`,
           }}
-          className={`fixed z-50 origin-top overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl ring-1 ring-black/5 transition-all duration-200 ease-out dark:border-neutral-800 dark:bg-neutral-900 ${
+          className={`fixed z-50 origin-top overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-soft-lg ring-1 ring-black/5 transition-all duration-200 ease-out dark:border-neutral-800 dark:bg-neutral-900 ${
             open ? "translate-y-0 scale-100 opacity-100" : "-translate-y-2 scale-95 opacity-0"
           }`}
         >

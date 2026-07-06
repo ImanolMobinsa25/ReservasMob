@@ -22,20 +22,74 @@
   --color-electric-500: #0057ff;
   --color-electric-600: #0047d1;
   --color-electric-700: #0038a3;
+
+  --shadow-soft: 0 1px 2px rgba(16, 24, 55, 0.04), 0 8px 24px -12px rgba(16, 24, 55, 0.12);
+  --shadow-soft-lg: 0 4px 12px rgba(16, 24, 55, 0.06), 0 24px 48px -20px rgba(16, 24, 55, 0.22);
 }
 
 :root {
   color-scheme: light dark;
 }
 
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(42, 75, 160, 0.35) transparent;
+}
+
 body {
   margin: 0;
-  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    "Inter",
+    system-ui,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(42, 75, 160, 0.28);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(42, 75, 160, 0.45);
+}
+
+.bg-app-gradient {
+  background:
+    radial-gradient(1200px 600px at 8% -10%, rgba(0, 87, 255, 0.08), transparent 60%),
+    radial-gradient(1000px 500px at 100% 0%, rgba(42, 75, 160, 0.08), transparent 55%);
+}
+@media (prefers-color-scheme: dark) {
+  .bg-app-gradient {
+    background:
+      radial-gradient(1200px 600px at 8% -10%, rgba(0, 87, 255, 0.14), transparent 60%),
+      radial-gradient(1000px 500px at 100% 0%, rgba(42, 75, 160, 0.16), transparent 55%);
+  }
 }
 
 .rdp-root {
   --rdp-accent-color: #2a4ba0;
   --rdp-today-color: #0057ff;
+  --rdp-day-height: 2.5rem;
+  --rdp-day-width: 2.5rem;
+}
+.rdp-root .rdp-day_button {
+  border-radius: 0.65rem;
+  transition:
+    background-color 0.15s ease,
+    transform 0.1s ease;
+}
+.rdp-root .rdp-day_button:hover:not([disabled]) {
+  transform: translateY(-1px);
 }
 
 .rdp-day_booked button,
@@ -76,4 +130,35 @@ body {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    100deg,
+    rgba(148, 163, 184, 0.12) 30%,
+    rgba(148, 163, 184, 0.24) 45%,
+    rgba(148, 163, 184, 0.12) 60%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Lock, Mail, User } from "lucide-react";
 import { Logo } from "../components/layout/Logo";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Field";
@@ -37,17 +38,21 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-50 px-4 dark:bg-neutral-950">
-      <div className="w-full max-w-sm animate-[fadeIn_0.25s_ease-out] rounded-xl border border-neutral-200 bg-white p-8 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="bg-app-gradient flex min-h-screen items-center justify-center bg-neutral-50 px-4 dark:bg-neutral-950">
+      <div className="w-full max-w-sm animate-[scaleIn_0.25s_ease-out] rounded-2xl border border-neutral-200 bg-white p-8 shadow-soft-lg dark:border-neutral-800 dark:bg-neutral-900">
         <div className="mb-6 flex justify-center">
           <Logo />
         </div>
-        <h1 className="mb-6 text-center text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+        <h1 className="mb-1 text-center text-lg font-semibold text-neutral-900 dark:text-neutral-100">
           Crear cuenta
         </h1>
+        <p className="mb-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
+          Regístrate para solicitar salas de juntas.
+        </p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             label="Nombre"
+            icon={<User size={16} />}
             autoComplete="name"
             required
             value={name}
@@ -55,6 +60,7 @@ export function RegisterPage() {
           />
           <Input
             label="Correo"
+            icon={<Mail size={16} />}
             type="email"
             autoComplete="email"
             required
@@ -63,6 +69,7 @@ export function RegisterPage() {
           />
           <Input
             label="Contraseña"
+            icon={<Lock size={16} />}
             type="password"
             autoComplete="new-password"
             required
@@ -70,13 +77,16 @@ export function RegisterPage() {
             onChange={(e) => setPassword(e.target.value)}
           />
           <Alert variant="error" message={error} />
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full" loading={loading}>
             {loading ? "Creando..." : "Crear cuenta"}
           </Button>
         </form>
         <p className="mt-5 text-center text-sm text-neutral-500 dark:text-neutral-400">
           ¿Ya tienes cuenta?{" "}
-          <Link to="/login" className="font-medium text-royal-600 dark:text-royal-400">
+          <Link
+            to="/login"
+            className="font-medium text-royal-600 hover:text-royal-700 dark:text-royal-400 dark:hover:text-royal-300"
+          >
             Inicia sesión
           </Link>
         </p>

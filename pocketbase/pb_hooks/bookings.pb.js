@@ -7,6 +7,9 @@
 // primera que se apruebe rechaza automáticamente a las demás, ver abajo).
 onRecordCreateRequest((e) => {
   e.record.set("requested_by", e.auth.id);
+  // El correo ya no lo captura el formulario (se pedía para un correo de
+  // confirmación que no se envía); se toma directo de la cuenta autenticada.
+  e.record.set("requester_email", e.auth.get("email"));
   e.record.set("status", "pending");
   e.record.set("rejection_reason", "");
 
@@ -62,6 +65,36 @@ onRecordCreateRequest((e) => {
   e.next();
 }, "bookings");
 
+// Cada 5 minutos: cualquier solicitud que siga "pending" y cuya fecha/hora de
+// inicio ya pasó se rechaza automáticamente por falta de respuesta. Se guarda
+// con $app.save (no vía request), lo que dispara igualmente el hook
+// onRecordAfterUpdateSuccess de abajo y notifica al solicitante y a
+// RH/Admin/AdminVip con el motivo, tal como un rechazo manual.
+cronAdd("rejectStaleBookings", "*/5 * * * *", () => {
+  const nowIso = new Date().toISOString().replace("T", " ");
+  const autoReason =
+    "Rechazada automáticamente: no hubo respuesta antes de la fecha y hora solicitada.";
+
+  const stale = $app.findRecordsByFilter(
+    "bookings",
+    "status = 'pending' && start < {:now}",
+    "",
+    0,
+    0,
+    { now: nowIso },
+  );
+
+  for (const booking of stale) {
+    try {
+      booking.set("status", "rejected");
+      booking.set("rejection_reason", autoReason);
+      $app.save(booking);
+    } catch (err) {
+      console.log("Error al rechazar automáticamente solicitud vencida:", booking.id, err);
+    }
+  }
+});
+
 // Notifica (en la app, sin correo por ahora) a todo RH/Admin/AdminVip de que
 // llegó una solicitud nueva.
 onRecordAfterCreateSuccess((e) => {
@@ -107,7 +140,7 @@ onRecordUpdateRequest((e) => {
   const role = e.auth?.get("role");
 
   if (role === "rh") {
-    const guardedFields = ["room", "reason", "start", "end", "people_count", "requester_email", "requested_by"];
+    const guardedFields = ["room", "reason", "start", "end", "people_count", "requester_email", "requester_name", "requested_by"];
     for (const name of guardedFields) {
       if (JSON.stringify(original.get(name)) !== JSON.stringify(e.record.get(name))) {
         throw new BadRequestError("RH solo puede aprobar o rechazar la solicitud.");

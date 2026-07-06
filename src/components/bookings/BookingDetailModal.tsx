@@ -1,13 +1,16 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
+import { Check, Clock4, User, Users as UsersIcon, X as XIcon } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
-import { Checkbox, TextArea } from "../ui/Field";
+import { TextArea } from "../ui/Field";
 import { StatusBadge } from "../ui/Badge";
 import { Alert } from "../ui/Alert";
 import { pb } from "../../lib/pocketbase";
 import { EXTRA_ITEMS } from "../../lib/types";
 import type { Booking } from "../../lib/types";
-import { formatRange } from "../../utils/dateRange";
+import { formatRange, isPast } from "../../utils/dateRange";
+import { EXTRA_ICONS } from "./extraIcons";
 
 export function BookingDetailModal({
   booking,
@@ -32,7 +35,8 @@ export function BookingDetailModal({
   const [extrasComment, setExtrasComment] = useState(booking.extras_comment ?? "");
 
   const roomName = booking.expand?.room?.name ?? "Sala";
-  const requesterEmail = booking.expand?.requested_by?.email ?? booking.requester_email;
+  const requesterName =
+    booking.requester_name || booking.expand?.requested_by?.name || booking.requester_email;
 
   function extrasPayload() {
     return {
@@ -77,40 +81,71 @@ export function BookingDetailModal({
   }
 
   return (
-    <Modal title={roomName} onClose={onClose}>
-      <div className="space-y-3 text-sm">
+    <Modal title={roomName} subtitle={formatRange(booking.start, booking.end)} onClose={onClose}>
+      <div className="space-y-4 text-sm">
         <div className="flex items-center justify-between">
           <span className="text-neutral-500 dark:text-neutral-400">Estado</span>
-          <StatusBadge status={booking.status} />
+          <StatusBadge status={booking.status} past={isPast(booking.end)} />
         </div>
-        <Detail label="Horario" value={formatRange(booking.start, booking.end)} />
-        <Detail label="Personas" value={String(booking.people_count)} />
-        <Detail label="Solicitante" value={requesterEmail} />
-        <Detail label="Motivo" value={booking.reason} multiline />
+
+        <div className="grid grid-cols-2 gap-3">
+          <InfoTile icon={<Clock4 size={15} />} label="Horario" value={formatRange(booking.start, booking.end)} />
+          <InfoTile icon={<UsersIcon size={15} />} label="Personas" value={String(booking.people_count)} />
+        </div>
+        <InfoTile icon={<User size={15} />} label="Solicitante" value={requesterName} />
+        <Detail label="Motivo" value={booking.reason} />
         {booking.status === "rejected" && booking.rejection_reason && (
-          <Detail label="Razón de rechazo" value={booking.rejection_reason} multiline />
+          <Detail label="Razón de rechazo" value={booking.rejection_reason} tone="danger" />
         )}
 
-        <div className="border-t border-neutral-100 pt-3 dark:border-neutral-800">
-          <span className="text-neutral-500 dark:text-neutral-400">Extras solicitados</span>
+        <div className="border-t border-neutral-100 pt-4 dark:border-neutral-800">
+          <span className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
+            Extras solicitados
+          </span>
           {requestedExtras.length === 0 ? (
-            <p className="mt-1 text-neutral-600 dark:text-neutral-400">No solicitó nada extra.</p>
+            <p className="mt-2 text-neutral-500 dark:text-neutral-400">No solicitó nada extra.</p>
           ) : canManage && booking.status === "pending" ? (
-            <div className="mt-2 space-y-2 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
+            <div className="mt-2 space-y-3 rounded-xl border border-neutral-200 p-3 dark:border-neutral-800">
               <p className="text-xs text-neutral-500 dark:text-neutral-400">
                 Desmarca lo que no se pueda cumplir y explica por qué en el comentario.
               </p>
-              <div className="grid grid-cols-2 gap-2">
-                {requestedExtras.map((item) => (
-                  <Checkbox
-                    key={item.key}
-                    label={item.label}
-                    checked={extrasApproval[item.approvedKey]}
-                    onChange={(e) =>
-                      setExtrasApproval((prev) => ({ ...prev, [item.approvedKey]: e.target.checked }))
-                    }
-                  />
-                ))}
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {requestedExtras.map((item) => {
+                  const Icon = EXTRA_ICONS[item.key];
+                  const approved = extrasApproval[item.approvedKey];
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      aria-pressed={approved}
+                      onClick={() =>
+                        setExtrasApproval((prev) => ({ ...prev, [item.approvedKey]: !prev[item.approvedKey] }))
+                      }
+                      className={`flex flex-col items-center gap-1.5 rounded-xl border px-2 py-2.5 text-center transition-colors ${
+                        approved
+                          ? "border-emerald-300 bg-emerald-50 dark:border-emerald-500/40 dark:bg-emerald-500/10"
+                          : "border-red-200 bg-red-50 dark:border-red-500/30 dark:bg-red-500/10"
+                      }`}
+                    >
+                      <span className="relative">
+                        <Icon
+                          size={18}
+                          className={approved ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}
+                        />
+                        <span
+                          className={`absolute -right-1.5 -top-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-white ${
+                            approved ? "bg-emerald-500" : "bg-red-500"
+                          }`}
+                        >
+                          {approved ? <Check size={9} strokeWidth={3} /> : <XIcon size={9} strokeWidth={3} />}
+                        </span>
+                      </span>
+                      <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                        {item.label}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
               <TextArea
                 label="Comentario sobre extras (opcional)"
@@ -120,14 +155,25 @@ export function BookingDetailModal({
               />
             </div>
           ) : (
-            <div className="mt-1 space-y-1">
-              {requestedExtras.map((item) => (
-                <p key={item.key} className="text-neutral-700 dark:text-neutral-300">
-                  {item.label}: {booking[item.approvedKey] ? "Sí" : "No disponible"}
-                </p>
-              ))}
+            <div className="mt-2 flex flex-wrap gap-2">
+              {requestedExtras.map((item) => {
+                const Icon = EXTRA_ICONS[item.key];
+                const ok = booking[item.approvedKey];
+                return (
+                  <span
+                    key={item.key}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+                      ok
+                        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+                        : "bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300"
+                    }`}
+                  >
+                    <Icon size={13} /> {item.label} {ok ? "" : "· no disponible"}
+                  </span>
+                );
+              })}
               {booking.extras_comment && (
-                <p className="mt-1 text-neutral-600 dark:text-neutral-400">
+                <p className="mt-1 w-full text-neutral-600 dark:text-neutral-400">
                   Comentario: {booking.extras_comment}
                 </p>
               )}
@@ -148,7 +194,7 @@ export function BookingDetailModal({
                   autoFocus
                 />
                 <div className="flex gap-2">
-                  <Button variant="danger" onClick={reject} disabled={loading}>
+                  <Button variant="danger" onClick={reject} loading={loading}>
                     Confirmar rechazo
                   </Button>
                   <Button variant="ghost" onClick={() => setRejecting(false)} disabled={loading}>
@@ -158,7 +204,7 @@ export function BookingDetailModal({
               </>
             ) : (
               <div className="flex gap-2">
-                <Button onClick={approve} disabled={loading}>
+                <Button onClick={approve} loading={loading}>
                   Aprobar
                 </Button>
                 <Button variant="danger" onClick={() => setRejecting(true)} disabled={loading}>
@@ -173,24 +219,38 @@ export function BookingDetailModal({
   );
 }
 
+function InfoTile({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-neutral-50 p-3 dark:bg-neutral-800/60">
+      <div className="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+        {icon}
+        {label}
+      </div>
+      <p className="mt-1 truncate font-medium text-neutral-800 dark:text-neutral-200">{value}</p>
+    </div>
+  );
+}
+
 function Detail({
   label,
   value,
-  multiline,
+  tone,
 }: {
   label: string;
   value: string;
-  multiline?: boolean;
+  tone?: "danger";
 }) {
   return (
-    <div className={multiline ? "" : "flex items-center justify-between gap-4"}>
-      <span className="text-neutral-500 dark:text-neutral-400">{label}</span>
+    <div>
+      <span className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
+        {label}
+      </span>
       <p
-        className={
-          multiline
-            ? "mt-1 text-neutral-800 dark:text-neutral-200"
-            : "truncate text-right font-medium text-neutral-800 dark:text-neutral-200"
-        }
+        className={`mt-1 whitespace-pre-wrap ${
+          tone === "danger"
+            ? "text-red-600 dark:text-red-400"
+            : "text-neutral-800 dark:text-neutral-200"
+        }`}
       >
         {value}
       </p>
