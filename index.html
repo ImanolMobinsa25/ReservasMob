@@ -6,6 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sala de Reuniones</title>
     <script type="text/javascript">
+      // Aplica el tema guardado antes de pintar, para evitar parpadeo de
+      // color al cargar la página.
+      (function () {
+        var saved = localStorage.getItem("theme");
+        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var isDark = saved ? saved === "dark" : prefersDark;
+        document.documentElement.classList.toggle("dark", isDark);
+      })();
+    </script>
+    <script type="text/javascript">
       // Contraparte de public/404.html: decodifica la ruta real desde el
       // querystring antes de que React Router monte, para que al recargar
       // /ReservasMob/login (por ejemplo) la app abra esa misma ruta.
@@ -18,7 +28,11 @@
               return s.replace(/~and~/g, "&");
             })
             .join("?");
-          window.history.replaceState(null, "", l.pathname.slice(0, -1) + decoded + l.hash);
+          window.history.replaceState(
+            null,
+            "",
+            l.pathname.slice(0, -1) + decoded + l.hash,
+          );
         }
       })(window.location);
     </script>

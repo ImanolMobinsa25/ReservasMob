@@ -1,6 +1,15 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { Check, Clock4, Trash2, User, Users as UsersIcon, X as XIcon } from "lucide-react";
+import {
+  Check,
+  CheckCheck,
+  Clock4,
+  Trash2,
+  User,
+  Users as UsersIcon,
+  X as XIcon,
+  XCircle,
+} from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import { TextArea } from "../ui/Field";
@@ -8,7 +17,7 @@ import { StatusBadge } from "../ui/Badge";
 import { Alert } from "../ui/Alert";
 import { pb } from "../../lib/pocketbase";
 import { EXTRA_ITEMS } from "../../lib/types";
-import type { Booking } from "../../lib/types";
+import type { Booking, UserRecord } from "../../lib/types";
 import { formatRange, isPast } from "../../utils/dateRange";
 import { EXTRA_ICONS } from "./extraIcons";
 
@@ -16,6 +25,7 @@ export function BookingDetailModal({
   booking,
   canApprove,
   canDelete,
+  currentUser,
   onClose,
   onUpdated,
   onDeleted,
@@ -23,6 +33,7 @@ export function BookingDetailModal({
   booking: Booking;
   canApprove: boolean;
   canDelete: boolean;
+  currentUser?: UserRecord | null;
   onClose: () => void;
   onUpdated: (id: string, patch: Partial<Booking>) => void;
   onDeleted: (id: string) => void;
@@ -32,6 +43,7 @@ export function BookingDetailModal({
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
 
   const requestedExtras = EXTRA_ITEMS.filter((item) => booking[item.key]);
   // Al crear la solicitud el hook deja todos los "*_approved" en false (son
@@ -108,12 +120,47 @@ export function BookingDetailModal({
     }
   }
 
+  const isRequester = currentUser?.id === booking.requested_by;
+  const canCancel =
+    booking.status === "approved" && !booking.cancelled && !isPast(booking.end) && (isRequester || canApprove);
+  const canConfirmAttendance =
+    booking.status === "approved" && !booking.cancelled && !booking.attended && isRequester &&
+    isPast(booking.start) && !isPast(booking.end);
+
+  async function cancel() {
+    setError(null);
+    setLoading(true);
+    try {
+      await pb.collection("bookings").update(booking.id, { cancelled: true });
+      onUpdated(booking.id, { cancelled: true } as Partial<Booking>);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo cancelar la reserva.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function confirmAttendance() {
+    setError(null);
+    setLoading(true);
+    try {
+      await pb.collection("bookings").update(booking.id, { attended: true });
+      onUpdated(booking.id, { attended: true } as Partial<Booking>);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo confirmar la asistencia.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <Modal title={roomName} subtitle={formatRange(booking.start, booking.end)} onClose={onClose}>
       <div className="space-y-4 text-sm">
         <div className="flex items-center justify-between">
           <span className="text-neutral-500 dark:text-neutral-400">Estado</span>
-          <StatusBadge status={booking.status} past={isPast(booking.end)} />
+          <StatusBadge status={booking.status} past={isPast(booking.end)} cancelled={booking.cancelled} attended={booking.attended} />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -233,6 +280,47 @@ export function BookingDetailModal({
             </div>
           )}
         </div>
+
+        {canConfirmAttendance && (
+          <div className="mt-2">
+            <Button onClick={confirmAttendance} loading={loading} variant="secondary">
+              <CheckCheck size={16} /> Confirmar que asistí
+            </Button>
+          </div>
+        )}
+
+        {canCancel && !confirmingCancel && (
+          <div className="border-t border-neutral-100 pt-3 dark:border-neutral-800">
+            <button
+              type="button"
+              onClick={() => setConfirmingCancel(true)}
+              className="flex items-center gap-1.5 text-xs font-medium text-neutral-400 transition-colors hover:text-red-600 dark:text-neutral-500 dark:hover:text-red-400"
+            >
+              <XCircle size={13} /> Cancelar reserva
+            </button>
+          </div>
+        )}
+
+        {canCancel && confirmingCancel && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 dark:border-red-500/30 dark:bg-red-500/10">
+            <p className="text-xs font-medium text-red-700 dark:text-red-300">
+              ¿Cancelar esta reserva? Se liberará el horario.
+            </p>
+            <div className="flex shrink-0 gap-2">
+              <Button size="sm" variant="danger" onClick={cancel} loading={loading}>
+                Sí, cancelar
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setConfirmingCancel(false)}
+                disabled={loading}
+              >
+                No
+              </Button>
+            </div>
+          </div>
+        )}
 
         <Alert variant="error" message={error} />
 

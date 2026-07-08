@@ -45,7 +45,7 @@ onRecordCreateRequest((e) => {
 
   const approvedOverlap = e.app.findRecordsByFilter(
     "bookings",
-    "room = {:room} && status = 'approved' && start < {:end} && end > {:start}",
+    "room = {:room} && status = 'approved' && cancelled = false && start < {:end} && end > {:start}",
     "",
     1,
     0,
@@ -205,16 +205,95 @@ onRecordAfterCreateSuccess((e) => {
 
 // RH solo puede tocar status/rejection_reason; rechazar exige una razón;
 // aprobar vuelve a validar que no exista otra aprobada ese mismo día.
+// El solicitante (o RH) puede cancelar una reserva aprobada si no ha terminado.
 onRecordUpdateRequest((e) => {
   const original = e.record.original();
   const role = e.auth?.get("role");
+  const isRh = role === "rh";
 
-  if (role === "rh") {
-    const guardedFields = ["room", "reason", "start", "end", "people_count", "requester_email", "requester_name", "requested_by"];
-    for (const name of guardedFields) {
+  // Campos que nunca debe poder tocar quien NO es RH, ni siquiera de
+  // colada junto con una cancelación o confirmación de asistencia (evita que
+  // alguien mande {cancelled:true, status:"approved", ...} en la misma
+  // petición para auto-aprobarse o alterar su propia solicitud).
+  function othersUnchanged(exceptFields) {
+    const guarded = [
+      "room", "reason", "start", "end", "people_count", "requester_email",
+      "requester_name", "requested_by", "status", "rejection_reason",
+      "approved_by_name", "coffee_approved", "cookies_approved",
+      "water_approved", "snack_approved", "extras_comment",
+    ];
+    for (const name of guarded) {
+      if (exceptFields.includes(name)) continue;
       if (JSON.stringify(original.get(name)) !== JSON.stringify(e.record.get(name))) {
-        throw new BadRequestError("RH solo puede aprobar o rechazar la solicitud.");
+        return false;
       }
+    }
+    return true;
+  }
+
+  const originalCancelled = original.get("cancelled");
+  const newCancelled = e.record.get("cancelled");
+
+  // Si se está marcando cancelled = true
+  if (newCancelled && !originalCancelled) {
+    const requesterId = original.get("requested_by");
+    const isRequester = e.auth.id === requesterId;
+
+    if (!isRequester && !isRh) {
+      throw new BadRequestError("Solo el solicitante o RH pueden cancelar la reserva.");
+    }
+    if (!othersUnchanged(["cancelled"])) {
+      throw new BadRequestError("Solo se puede cambiar el estado de cancelación.");
+    }
+
+    const originalStatus = original.get("status");
+    if (originalStatus !== "approved") {
+      throw new BadRequestError("Solo se pueden cancelar reservas aprobadas.");
+    }
+
+    const end = new Date(original.get("end"));
+    if (end.getTime() < Date.now()) {
+      throw new BadRequestError("No se puede cancelar una reserva que ya terminó.");
+    }
+
+    // Permitir la cancelación: mantener status como "approved" pero con cancelled = true
+    e.next();
+    return;
+  }
+
+  // Permitir que el solicitante marque attended durante la reserva
+  const newAttended = e.record.get("attended");
+  const originalAttended = original.get("attended");
+  if (newAttended && !originalAttended) {
+    const isRequester = e.auth.id === original.get("requested_by");
+    if (!isRequester && !isRh) {
+      throw new BadRequestError("Solo el solicitante o RH pueden confirmar asistencia.");
+    }
+    if (!othersUnchanged(["attended"])) {
+      throw new BadRequestError("Solo se puede cambiar el estado de asistencia.");
+    }
+    const start = new Date(original.get("start"));
+    const end = new Date(original.get("end"));
+    const now = Date.now();
+    if (now < start.getTime() || now > end.getTime()) {
+      throw new BadRequestError("Solo se puede confirmar asistencia durante el horario de la reserva.");
+    }
+    e.next();
+    return;
+  }
+
+  // Cualquier otro cambio (aprobar/rechazar/editar extras) es exclusivo de
+  // RH. El nuevo updateRule permite que el solicitante llame a este endpoint
+  // para su propia reserva (necesario para cancelar/confirmar asistencia
+  // arriba), así que sin este candado podría aprobar su propia solicitud.
+  if (!isRh) {
+    throw new BadRequestError("No tienes permiso para modificar esta solicitud.");
+  }
+
+  const guardedFields = ["room", "reason", "start", "end", "people_count", "requester_email", "requester_name", "requested_by"];
+  for (const name of guardedFields) {
+    if (JSON.stringify(original.get(name)) !== JSON.stringify(e.record.get(name))) {
+      throw new BadRequestError("RH solo puede aprobar o rechazar la solicitud.");
     }
   }
 
@@ -230,7 +309,7 @@ onRecordUpdateRequest((e) => {
   if (newStatus === "approved") {
     e.record.set("rejection_reason", "");
     // Se guarda como texto plano (no relación) porque el solicitante no
-    // necesariamente tiene permiso para ver el registro de usuario de quien
+    // necesariamente tiene permiso para ver el archivo de usuario de quien
     // aprobó (RH/Admin no son visibles entre sí vía las reglas de "users").
     e.record.set("approved_by_name", e.auth.get("name") || e.auth.get("email"));
 
@@ -240,7 +319,7 @@ onRecordUpdateRequest((e) => {
 
     const approvedOverlap = e.app.findRecordsByFilter(
       "bookings",
-      "room = {:room} && status = 'approved' && start < {:end} && end > {:start} && id != {:id}",
+      "room = {:room} && status = 'approved' && cancelled = false && start < {:end} && end > {:start} && id != {:id}",
       "",
       1,
       0,
@@ -362,6 +441,76 @@ onRecordAfterUpdateSuccess((e) => {
       }
     } catch (err) {
       console.log("Error enviando correo de rechazo:", err);
+    }
+  }
+
+  // Si se canceló la reserva, notificar a RH
+  const originalCancelled = original.get("cancelled");
+  const newCancelled = e.record.get("cancelled");
+  if (newCancelled && !originalCancelled) {
+    try {
+      const managers = e.app.findRecordsByFilter(
+        "users",
+        "role = 'rh' || role = 'admin' || role = 'adminvip'",
+        "",
+        0,
+        0,
+      );
+      const roomName = (() => {
+        try {
+          return e.app.findRecordById("rooms", e.record.get("room")).get("name");
+        } catch (_) {
+          return "una sala";
+        }
+      })();
+
+      for (const manager of managers) {
+        const notif = new Record(e.app.findCollectionByNameOrId("notifications"));
+        notif.set("recipient", manager.id);
+        notif.set("booking", e.record.id);
+        notif.set("type", "rejected");
+        notif.set(
+          "message",
+          `Reserva de ${roomName} cancelada por el solicitante (${e.record.get("requester_name")}). Horario liberado.`,
+        );
+        notif.set("read", false);
+        e.app.save(notif);
+      }
+
+      const requesterNotif = new Record(e.app.findCollectionByNameOrId("notifications"));
+      requesterNotif.set("recipient", e.record.get("requested_by"));
+      requesterNotif.set("booking", e.record.id);
+      requesterNotif.set("type", "rejected");
+      requesterNotif.set("message", `Tu reserva de ${roomName} fue cancelada correctamente.`);
+      requesterNotif.set("read", false);
+      e.app.save(requesterNotif);
+    } catch (err) {
+      console.log("Error creando notificación de cancelación:", err);
+    }
+  }
+
+  // Si se confirmó asistencia, notificar al solicitante
+  const originalAttended = original.get("attended");
+  const newAttended = e.record.get("attended");
+  if (newAttended && !originalAttended) {
+    try {
+      const roomName = (() => {
+        try {
+          return e.app.findRecordById("rooms", e.record.get("room")).get("name");
+        } catch (_) {
+          return "una sala";
+        }
+      })();
+
+      const notif = new Record(e.app.findCollectionByNameOrId("notifications"));
+      notif.set("recipient", e.record.get("requested_by"));
+      notif.set("booking", e.record.id);
+      notif.set("type", "approved");
+      notif.set("message", `Asistencia confirmada para ${roomName}. ¡Gracias!`);
+      notif.set("read", false);
+      e.app.save(notif);
+    } catch (err) {
+      console.log("Error creando notificación de confirmación de asistencia:", err);
     }
   }
 

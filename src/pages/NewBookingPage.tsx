@@ -171,21 +171,30 @@ export function NewBookingPage() {
 
       <form onSubmit={handleSubmit} className="grid gap-6 md:grid-cols-2">
         <div className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-4 shadow-soft sm:p-5 dark:border-neutral-800 dark:bg-neutral-900">
-          <Select
-            label="Sala"
-            icon={<Building2 size={16} />}
-            value={roomId}
-            onChange={(e) => setRoomId(e.target.value)}
-            required
-            disabled={roomsLoading}
-          >
-            <option value="">Selecciona una sala</option>
-            {rooms.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </Select>
+          {roomsLoading ? (
+            <div>
+              <span className="mb-1.5 block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                Sala
+              </span>
+              <div className="skeleton h-11 rounded-xl" />
+            </div>
+          ) : (
+            <Select
+              label="Sala"
+              icon={<Building2 size={16} />}
+              value={roomId}
+              onChange={(e) => setRoomId(e.target.value)}
+              required
+              disabled={roomsLoading}
+            >
+              <option value="">Selecciona una sala</option>
+              {rooms.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </Select>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <Select

@@ -4,17 +4,40 @@ import { NavLink, Outlet } from "react-router-dom";
 import {
   Building2,
   CalendarDays,
+  ChartColumnIncreasing,
+  CheckCheck,
   ClipboardList,
+  LayoutDashboard,
   LogOut,
   Menu,
+  Moon,
   PlusCircle,
+  Sun,
+  User,
   Users,
   X,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { canManageUsers, ROLE_LABELS } from "../../lib/types";
+import { useTheme } from "../../context/ThemeContext";
+import { canApproveRequests, canManageRequests, canManageUsers, ROLE_LABELS } from "../../lib/types";
 import { Logo } from "./Logo";
 import { NotificationBell } from "./NotificationBell";
+
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === "dark";
+  return (
+    <button
+      type="button"
+      onClick={toggleTheme}
+      aria-label={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+      title={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+      className="rounded-lg p-2 text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+    >
+      {isDark ? <Sun size={20} /> : <Moon size={20} />}
+    </button>
+  );
+}
 
 const navItemClass = ({ isActive }: { isActive: boolean }) =>
   `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
@@ -75,14 +98,69 @@ export function AppShell() {
           </>
         )}
       </NavLink>
-      {canManageUsers(user.role) && (
-        <NavLink to="/users" className={navItemClass} onClick={() => setOpen(false)}>
+      <NavLink to="/my-calendar" className={navItemClass} onClick={() => setOpen(false)}>
+        {({ isActive }) => (
+          <>
+            <NavIcon isActive={isActive}>
+              <CalendarDays size={16} />
+            </NavIcon>
+            Mi calendario
+          </>
+        )}
+      </NavLink>
+      <NavLink to="/room-timeline" className={navItemClass} onClick={() => setOpen(false)}>
+        {({ isActive }) => (
+          <>
+            <NavIcon isActive={isActive}>
+              <CalendarDays size={16} />
+            </NavIcon>
+            Timeline salas
+          </>
+        )}
+      </NavLink>
+      <NavLink to="/profile" className={navItemClass} onClick={() => setOpen(false)}>
+        {({ isActive }) => (
+          <>
+            <NavIcon isActive={isActive}>
+              <User size={16} />
+            </NavIcon>
+            Mi perfil
+          </>
+        )}
+      </NavLink>
+      {canManageRequests(user.role) && (
+        <NavLink to="/dashboard" className={navItemClass} onClick={() => setOpen(false)}>
           {({ isActive }) => (
             <>
               <NavIcon isActive={isActive}>
-                <Users size={16} />
+                <LayoutDashboard size={16} />
               </NavIcon>
-              Usuarios
+              Dashboard
+            </>
+          )}
+        </NavLink>
+      )}
+      {canApproveRequests(user.role) && (
+        <NavLink to="/approvals" className={navItemClass} onClick={() => setOpen(false)}>
+          {({ isActive }) => (
+            <>
+              <NavIcon isActive={isActive}>
+                <CheckCheck size={16} />
+              </NavIcon>
+              Aprobaciones
+            </>
+          )}
+        </NavLink>
+      )}
+      
+      {canManageRequests(user.role) && (
+        <NavLink to="/reports" className={navItemClass} onClick={() => setOpen(false)}>
+          {({ isActive }) => (
+            <>
+              <NavIcon isActive={isActive}>
+                <ChartColumnIncreasing size={16} />
+              </NavIcon>
+              Reportes
             </>
           )}
         </NavLink>
@@ -99,6 +177,18 @@ export function AppShell() {
           )}
         </NavLink>
       )}
+      {canManageUsers(user.role) && (
+        <NavLink to="/users" className={navItemClass} onClick={() => setOpen(false)}>
+          {({ isActive }) => (
+            <>
+              <NavIcon isActive={isActive}>
+                <Users size={16} />
+              </NavIcon>
+              Usuarios
+            </>
+          )}
+        </NavLink>
+      )}
     </nav>
   );
 
@@ -107,6 +197,7 @@ export function AppShell() {
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-neutral-200 bg-white/80 px-4 py-3 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/80 md:hidden">
         <Logo />
         <div className="flex items-center gap-1">
+          <ThemeToggle />
           <NotificationBell />
           <button
             aria-label="Abrir menú"
@@ -123,7 +214,10 @@ export function AppShell() {
         <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-neutral-200 bg-white/90 py-5 backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-950/90 md:flex">
           <div className="flex items-center justify-between px-4 pb-6">
             <Logo />
-            <NotificationBell />
+            <div className="flex items-center gap-1">
+              <ThemeToggle />
+              <NotificationBell />
+            </div>
           </div>
           {nav}
           <UserFooter email={user.email} role={ROLE_LABELS[user.role]} onLogout={logout} />

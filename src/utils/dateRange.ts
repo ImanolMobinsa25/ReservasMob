@@ -7,6 +7,7 @@ const dateFmt = new Intl.DateTimeFormat("es-MX", {
 const timeFmt = new Intl.DateTimeFormat("es-MX", {
   hour: "2-digit",
   minute: "2-digit",
+  hour12: true,
 });
 
 export function formatRange(startIso: string, endIso: string): string {
@@ -21,6 +22,7 @@ const dateTimeFmt = new Intl.DateTimeFormat("es-MX", {
   year: "numeric",
   hour: "2-digit",
   minute: "2-digit",
+  hour12: true,
 });
 
 export function formatDateTime(iso: string): string {

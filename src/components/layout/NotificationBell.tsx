@@ -24,7 +24,7 @@ const TYPE_STYLES: Record<NotificationType, { icon: typeof CalendarPlus; badge: 
 };
 
 export function NotificationBell() {
-  const { notifications, unreadCount, markRead, markAllRead } = useNotifications(true);
+  const { notifications, loading, unreadCount, markRead, markAllRead } = useNotifications(true);
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -111,7 +111,13 @@ export function NotificationBell() {
           </div>
 
           <div className="max-h-96 overflow-y-auto">
-            {notifications.length === 0 ? (
+            {loading ? (
+              <div className="space-y-2 p-3">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="skeleton h-12 rounded-xl" />
+                ))}
+              </div>
+            ) : notifications.length === 0 ? (
               <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
                 <BellOff size={22} className="text-neutral-300 dark:text-neutral-600" />
                 <p className="text-sm text-neutral-500 dark:text-neutral-400">

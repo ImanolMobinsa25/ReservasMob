@@ -2,12 +2,13 @@ import type { RecordModel } from "pocketbase";
 
 export type Role = "corporativo" | "rh" | "admin" | "adminvip";
 
-export type BookingStatus = "pending" | "approved" | "rejected";
+export type BookingStatus = "pending" | "approved" | "rejected" | "cancelled";
 
 export interface UserRecord extends RecordModel {
   email: string;
   name?: string;
   role: Role;
+  theme?: "light" | "dark";
 }
 
 export interface Room extends RecordModel {
@@ -40,6 +41,8 @@ export interface Booking extends RecordModel {
   water_approved: boolean;
   snack_approved: boolean;
   extras_comment?: string;
+  cancelled: boolean;
+  attended: boolean;
   expand?: {
     room?: Room;
     requested_by?: UserRecord;
@@ -74,6 +77,7 @@ export const STATUS_LABELS: Record<BookingStatus, string> = {
   pending: "Pendiente",
   approved: "Aprobada",
   rejected: "Rechazada",
+  cancelled: "Cancelada",
 };
 
 // Quién puede VER todas las solicitudes (no solo las propias).

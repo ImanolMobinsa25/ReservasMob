@@ -1,49 +1,106 @@
-Nombre de salas
-Sala de juntas F1
-Sala de juntas F2
-Sala de juntas F3
+Sistema de Reservación de Salas de Juntas — Requisitos
+
+1. Salas y catálogo
+
+
+Registrar las salas disponibles: Sala de juntas F1, F2, F3 (permitir añadir más desde el panel de Admin/AdminVip).
+Mostrar siempre la lista de salas disponibles al momento de crear una solicitud (corregir el bug donde no cargan las salas).
+Permitir capturar el motivo de la solicitud como texto libre.
+
+
+2. Roles y permisos
+
+
+Definir cuatro niveles de rol: AdminVip, Admin, Corporativo, RH.
+Permitir a AdminVip:
+
+Ver todos los usuarios registrados en el sistema.
+Asignar rol Admin, Corporativo o RH a cualquier usuario.
+Otorgar o revocar el rol AdminVip a otros administradores.
 
 
 
-Motivos
-(Escribirlo)
+Permitir a Admin:
 
-Roles
-Admin
-Corporativo
-RH
-
-Motivo por que necesita la sala
-que día necesita la sala de reuniones con su horario de inicio y finalización(Mostras un calendario para elegir, también la hora)
-cuantas personas estarán en la sala de reuniones
-correo para enviarle que se solicito la reunion 
-añadir restricciones para días ya ocupados por otros usuarios
-tener la vista del calendario para el usuario y que vea los días disponibles
-Usar react y pocketbase
-Administrador Vip podrá ver todos los usuarios registrados en el sistema, ponerles el rol Admin, Corporativo, RH, RH podrá ver solicitudes creadas por los usuarios corporativo y abrirlas y saber el motivo de la solicitud y tomar la decisión de aceptar o rechazar
-corporativo podrá ver el panel de solicitudes y así mismo crear su propia solicitud, donde al finalizar tendrá que enviarla y alguien de RH deberá aprobarla o denegarla y así mismo darle una razon por la cual se esta rechazando
-Diseño minimalista, menu hamburguesa con logo, añadir animaciones limpias, iconos modernos 
-El usuario AdminVip solo tendrá la diferencia de los Admin que podrá el añadir el rol y si el vip desea darles también rol AdminVip a esos otros admins o solo admin que tendrá acceso a todo menos a dar roles
-
-admin@test.com AdminPass123456 
+Acceder a todas las funciones del sistema, excepto la asignación de roles.
 
 
 
-Errores, deja elegir mismas solicitudes que se supone que otro usuario ya aparto, salen muchos errores, sale que genera las solicitudes pero en la vista de solicitudes no sale, en POCKETBASE NO VEO NADA donde se guardo la solicitud y el de usuarios
+Permitir a RH:
 
-No arroja las salas de reuniones a la hora de querer solicitarlas
-
-
-
-Las solicitudes deben mostrar horario en que se hizo la solicitud, para saber cual fue el usuario mas reciente en hacerla y a ese aceptar, añadir filtro para poder ver solicitudes por Sala, restricciones, el correo que se añade para que le llegue la confirmación no funciona, al crear solicitud si ya hay una solicitud pendiente en el mismo dia mostrar advertencia que ya hay una y que puede que se le rechace por que la otra persona la solicito con mas tiempo, en caso de que a alguien ya se le haya aprobado la solicitud ese día debe estar bloqueado, y por ende las solicitudes que tenían el mismo día serán rechazadas, cada usuario podrá ver el estado de su solicitud y claro el motivo del rechazo
-
-Download the React DevTools for a better development experience: https://react.dev/link/react-devtools
-:5173/login:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) null
-127.0.0.1:8090/api/collections/users/auth-with-password:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
-127.0.0.1:8090/api/collections/users/auth-with-password:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
-127.0.0.1:8090/api/collections/users/auth-with-password:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
-:5173/register:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) null
+Ver el panel de solicitudes generadas por usuarios Corporativo.
+Abrir el detalle de cada solicitud y consultar el motivo.
+Aceptar o rechazar la solicitud, indicando la razón del rechazo.
+Recibir notificaciones de toda solicitud nueva, cancelada o rechazada automáticamente (incluyendo el motivo).
 
 
 
-Mejor quitar lo del correo momentáneamente, al crear solicitud debe salir alerta de que debe estar atento para ver el estado de su solicitud, otro error al aceptar solicitud no pasa nada tengo que recargar pagina para que salga aprobado, soluciona eso, añade el logo lo puse en la carpeta Imágenes/Logo y el que esta ahi, los usaurios de RH tienen que tener notificaciones de todo lo que esta llegando o solicitudes canceladas y el por que, si son las que se rechazan automáticamente también, colores principales de la empresa Azul Eléctrico / Azul Rey,  
+Permitir a Corporativo:
+
+Ver el panel de solicitudes.
+Crear su propia solicitud y enviarla para aprobación.
+Consultar el estado de sus solicitudes (pendiente, aprobada, rechazada) y el motivo en caso de rechazo.
+
+
+
+
+
+3. Flujo de creación de solicitudes
+
+
+Solicitar al usuario: sala, motivo, fecha, hora de inicio, hora de finalización, número de personas y correo de contacto.
+Mostrar un calendario para seleccionar la fecha y un selector de hora para el horario.
+Registrar automáticamente la fecha y hora exacta en que se creó la solicitud (timestamp de creación), para poder determinar cuál solicitud fue hecha primero en caso de conflicto.
+Mostrar una alerta al finalizar la creación, indicando que debe estar atento al estado de su solicitud.
+Guardar correctamente cada solicitud en PocketBase y reflejarla de inmediato en la vista de solicitudes (corregir el bug donde la solicitud "se genera" pero no aparece ni en la vista ni en PocketBase).
+
+
+4. Disponibilidad y validaciones
+
+
+Mostrar en el calendario los días/horarios ya ocupados por sala.
+Impedir seleccionar una sala, fecha y horario ya reservados por otro usuario (corregir el bug que permite elegir horarios ya apartados).
+Advertir al usuario, si ya existe una solicitud pendiente para el mismo día y sala, que su solicitud podría ser rechazada por haberse hecho después.
+Bloquear automáticamente la selección de un día/sala una vez que exista una solicitud aprobada para ese horario.
+Rechazar automáticamente las demás solicitudes pendientes que coincidan con el mismo día/sala una vez aprobada una de ellas, registrando el motivo del rechazo automático.
+
+
+5. Panel de solicitudes
+
+
+Mostrar en cada solicitud: sala, fecha, horario solicitado, solicitante, motivo, número de personas, hora de creación de la solicitud y estado actual.
+Añadir filtros para ver solicitudes por sala y por estado.
+Actualizar la vista en tiempo real (o al menos inmediatamente después de la acción) al aceptar o rechazar una solicitud, sin requerir recargar la página (corregir el bug donde hay que refrescar para ver el cambio de estado).
+
+
+6. Notificaciones
+
+
+Notificar a RH de toda solicitud nueva recibida.
+Notificar a RH de toda solicitud cancelada o rechazada automáticamente, incluyendo el motivo.
+Notificar al solicitante cuando su solicitud sea aceptada o rechazada, incluyendo el motivo en caso de rechazo.
+Desactivar temporalmente el envío de confirmaciones por correo electrónico (dejarlo pendiente para una siguiente fase, ya que actualmente no funciona) y sustituirlo por la alerta interna dentro del sistema.
+
+
+7. Autenticación
+
+
+Corregir el error 400 (Bad Request) en auth-with-password al iniciar sesión y al registrarse.
+Agregar atributos autocomplete correctos a los campos de contraseña y correo en los formularios de login y registro.
+
+
+8. Diseño e identidad visual
+
+
+Aplicar diseño minimalista en toda la interfaz.
+Usar como colores principales el Azul Eléctrico y el Azul Rey.
+Incluir un menú hamburguesa con el logo de la empresa (ubicado en Imágenes/Logo).
+Incorporar animaciones limpias y sutiles en las transiciones.
+Usar iconografía moderna en todo el sistema.
+
+
+9. Stack técnico
+
+
+Construir el frontend con React.
+Usar PocketBase como backend y base de datos.

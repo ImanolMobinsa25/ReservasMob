@@ -13,7 +13,8 @@ export function AvailabilityPage() {
   const [selectedDay, setSelectedDay] = useState<Date>(new Date());
 
   const activeRoomId = roomId || rooms[0]?.id;
-  const { bookings } = useRoomAvailability(activeRoomId);
+  const { bookings, loading: bookingsLoading } = useRoomAvailability(activeRoomId);
+  const showSkeleton = loading || (Boolean(activeRoomId) && bookingsLoading);
 
   const approvedDays = useMemo(
     () => bookings.filter((b) => b.status === "approved").map((b) => new Date(b.start)),
@@ -42,7 +43,13 @@ export function AvailabilityPage() {
         </div>
       </div>
 
-      {!loading && (
+      {loading ? (
+        <div className="mb-6 flex flex-wrap gap-2">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="skeleton h-9 w-32 rounded-xl" />
+          ))}
+        </div>
+      ) : (
         <div className="mb-6 flex flex-wrap gap-2">
           {rooms.map((r) => {
             const active = (roomId || rooms[0]?.id) === r.id;
@@ -66,27 +73,33 @@ export function AvailabilityPage() {
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-soft dark:border-neutral-800 dark:bg-neutral-900">
-          <div className="overflow-x-auto">
-            <DayPicker
-              mode="single"
-              locale={es}
-              selected={selectedDay}
-              onSelect={(d) => d && setSelectedDay(d)}
-              modifiers={{ approved: approvedDays, pending: pendingDays }}
-              modifiersClassNames={{
-                approved: "rdp-day_approved",
-                pending: "rdp-day_pending",
-              }}
-            />
-          </div>
-          <div className="mt-3 flex flex-wrap gap-4 border-t border-neutral-100 pt-3 text-xs text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-red-400" /> Aprobada
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-amber-400" /> Pendiente
-            </span>
-          </div>
+          {showSkeleton ? (
+            <div className="skeleton h-80 rounded-xl" />
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <DayPicker
+                  mode="single"
+                  locale={es}
+                  selected={selectedDay}
+                  onSelect={(d) => d && setSelectedDay(d)}
+                  modifiers={{ approved: approvedDays, pending: pendingDays }}
+                  modifiersClassNames={{
+                    approved: "rdp-day_approved",
+                    pending: "rdp-day_pending",
+                  }}
+                />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-4 border-t border-neutral-100 pt-3 text-xs text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-red-400" /> Aprobada
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-amber-400" /> Pendiente
+                </span>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="h-fit rounded-2xl border border-neutral-200 bg-white p-4 shadow-soft dark:border-neutral-800 dark:bg-neutral-900">
@@ -94,7 +107,13 @@ export function AvailabilityPage() {
             <CalendarDays size={16} className="text-royal-600 dark:text-royal-400" />
             Reservas del {selectedDay.toLocaleDateString("es-MX", { dateStyle: "long" })}
           </p>
-          {dayBookings.length === 0 ? (
+          {showSkeleton ? (
+            <div className="space-y-2">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="skeleton h-11 rounded-xl" />
+              ))}
+            </div>
+          ) : dayBookings.length === 0 ? (
             <p className="text-sm text-neutral-500 dark:text-neutral-400">
               No hay reservas ese día para esta sala.
             </p>
@@ -108,7 +127,7 @@ export function AvailabilityPage() {
                   <span className="text-neutral-700 dark:text-neutral-300">
                     {formatRange(b.start, b.end)}
                   </span>
-                  <StatusBadge status={b.status} past={isPast(b.end)} />
+                  <StatusBadge status={b.status} past={isPast(b.end)} cancelled={b.cancelled} attended={b.attended} />
                 </li>
               ))}
             </ul>

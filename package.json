@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "deploy": "tsc -b && vite build --base=/ && if exist pocketbase\\pb_public rmdir /S /Q pocketbase\\pb_public && mkdir pocketbase\\pb_public && xcopy /E /Y /I dist pocketbase\\pb_public",
     "lint": "oxlint",
     "preview": "vite preview"
   },

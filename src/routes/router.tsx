@@ -6,10 +6,16 @@ import { RegisterPage } from "../pages/RegisterPage";
 import { RequestsPage } from "../pages/RequestsPage";
 import { NewBookingPage } from "../pages/NewBookingPage";
 import { AvailabilityPage } from "../pages/AvailabilityPage";
+import { DashboardPage } from "../pages/DashboardPage";
+import { MyCalendarPage } from "../pages/MyCalendarPage";
+import { ReportsPage } from "../pages/ReportsPage";
+import { RoomTimelinePage } from "../pages/RoomTimelinePage";
+import { ProfilePage } from "../pages/ProfilePage";
+import { ApprovalsPage } from "../pages/ApprovalsPage";
 import { UsersPage } from "../pages/UsersPage";
 import { RoomsPage } from "../pages/RoomsPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
-import { canManageUsers } from "../lib/types";
+import { canApproveRequests, canManageRequests, canManageUsers } from "../lib/types";
 
 export const router = createBrowserRouter(
   [
@@ -24,11 +30,25 @@ export const router = createBrowserRouter(
             { path: "/", element: <RequestsPage /> },
             { path: "/bookings/new", element: <NewBookingPage /> },
             { path: "/availability", element: <AvailabilityPage /> },
+            { path: "/my-calendar", element: <MyCalendarPage /> },
+            { path: "/room-timeline", element: <RoomTimelinePage /> },
+            { path: "/profile", element: <ProfilePage /> },
+            {
+              element: <ProtectedRoute allow={canManageRequests} />,
+              children: [
+                { path: "/dashboard", element: <DashboardPage /> },
+                { path: "/reports", element: <ReportsPage /> },
+              ],
+            },
+            {
+              element: <ProtectedRoute allow={canApproveRequests} />,
+              children: [{ path: "/approvals", element: <ApprovalsPage /> }],
+            },
             {
               element: <ProtectedRoute allow={canManageUsers} />,
               children: [
-                { path: "/users", element: <UsersPage /> },
                 { path: "/rooms", element: <RoomsPage /> },
+                { path: "/users", element: <UsersPage /> },
               ],
             },
           ],

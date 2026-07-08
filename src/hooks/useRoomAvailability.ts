@@ -14,7 +14,7 @@ export function useRoomAvailability(roomId: string | undefined) {
       return;
     }
     const list = await pb.collection("bookings").getFullList<Booking>({
-      filter: pb.filter("room = {:room} && status != 'rejected'", { room: roomId }),
+      filter: pb.filter("room = {:room} && status != 'rejected' && (cancelled = false || cancelled = null)", { room: roomId }),
       sort: "start",
     });
     setBookings(list);

@@ -4,8 +4,8 @@ import { ArrowUpDown, ClipboardList, Filter, Inbox, PlusCircle, User, Users } fr
 import { useAuth } from "../context/AuthContext";
 import { useBookings } from "../hooks/useBookings";
 import { useRooms } from "../hooks/useRooms";
-import { canApproveRequests, canManageRequests, EXTRA_ITEMS } from "../lib/types";
-import type { Booking } from "../lib/types";
+import { canApproveRequests, canManageRequests, EXTRA_ITEMS, STATUS_LABELS } from "../lib/types";
+import type { Booking, BookingStatus } from "../lib/types";
 import { StatusBadge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { Alert } from "../components/ui/Alert";
@@ -23,6 +23,7 @@ export function RequestsPage() {
   const { rooms } = useRooms();
   const [selected, setSelected] = useState<Booking | null>(null);
   const [roomFilter, setRoomFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<BookingStatus | "">("");
   const [sortOrder, setSortOrder] = useState<"recent" | "oldest">("recent");
   const showRequester = manage || ownScope === "all";
 
@@ -38,12 +39,13 @@ export function RequestsPage() {
   }
 
   const filtered = useMemo(() => {
-    const list = roomFilter ? bookings.filter((b) => b.room === roomFilter) : bookings;
+    let list = roomFilter ? bookings.filter((b) => b.room === roomFilter) : bookings;
+    if (statusFilter) list = list.filter((b) => b.status === statusFilter);
     return [...list].sort((a, b) => {
       const diff = new Date(a.created).getTime() - new Date(b.created).getTime();
       return sortOrder === "recent" ? -diff : diff;
     });
-  }, [bookings, roomFilter, sortOrder]);
+  }, [bookings, roomFilter, statusFilter, sortOrder]);
 
   return (
     <div>
@@ -79,7 +81,7 @@ export function RequestsPage() {
         className="mb-6"
         message={
           showCreatedBanner &&
-          "Tu solicitud fue enviada. Por el momento no se envían correos de confirmación, así que debes estar pendiente de esta página para ver cuándo se apruebe o rechace."
+          "Tu solicitud fue enviada. Te avisaremos por correo cuando se apruebe o rechace, y también puedes revisar el estado aquí en cualquier momento."
         }
         onDismiss={dismissCreatedBanner}
       />
@@ -132,6 +134,24 @@ export function RequestsPage() {
           </div>
         )}
         <div className="flex items-center gap-2">
+          <Filter size={15} className="text-neutral-400" />
+          <span className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+            Estado:
+          </span>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as BookingStatus | "")}
+            className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-sm outline-none transition-colors hover:border-neutral-400 focus:border-electric-500 focus:ring-4 focus:ring-electric-500/10 dark:border-neutral-700 dark:bg-neutral-900"
+          >
+            <option value="">Todos los estados</option>
+            {(Object.keys(STATUS_LABELS) as BookingStatus[]).map((s) => (
+              <option key={s} value={s}>
+                {STATUS_LABELS[s]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
           <ArrowUpDown size={15} className="text-neutral-400" />
           <span className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
             Ordenar por:
@@ -159,7 +179,9 @@ export function RequestsPage() {
             <Inbox size={22} />
           </span>
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            {roomFilter ? "No hay solicitudes para esta sala." : "Aún no hay solicitudes."}
+            {roomFilter || statusFilter
+              ? "No hay solicitudes que coincidan con ese filtro."
+              : "Aún no hay solicitudes."}
           </p>
         </div>
       ) : (
@@ -220,7 +242,7 @@ export function RequestsPage() {
                         </td>
                       )}
                       <td className="px-4 py-3">
-                        <StatusBadge status={b.status} past={isPast(b.end)} />
+                        <StatusBadge status={b.status} past={isPast(b.end)} cancelled={b.cancelled} attended={b.attended} />
                       </td>
                     </tr>
                   );
@@ -236,12 +258,10 @@ export function RequestsPage() {
           booking={selected}
           canApprove={canApprove}
           canDelete={manage || selected.requested_by === user?.id}
+          currentUser={user}
           onClose={() => setSelected(null)}
           onUpdated={(id, patch) => {
             patchLocal(id, patch);
-            // Refresca en segundo plano por si la acción disparó efectos en
-            // otras filas (ej. rechazo automático de otras solicitudes del
-            // mismo día).
             reload();
           }}
           onDeleted={(id) => {
